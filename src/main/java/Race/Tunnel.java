@@ -48,7 +48,7 @@ public class Tunnel extends Stage
             }
             finally
             {
-                System.out.println(c.getName() + " закончил этап: " + description + " !!!DELTHIS " + c.getCounterStagePoints() + " " + c.getCounterDistantPoints());
+                System.out.println(c.getName() + " закончил этап: " + description);
                 semaphore.release();
             }
         }

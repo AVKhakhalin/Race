@@ -31,7 +31,7 @@ public class Road extends Stage
                 ns += c.getFrameLength();
                 Thread.sleep(Math.max(0, (ns - System.nanoTime()) / 10000000));
             }
-            System.out.println(c.getName() + " закончил этап: " + description + " !!!DELTHIS " + c.getCounterStagePoints()  + " " + c.getCounterDistantPoints());
+            System.out.println(c.getName() + " закончил этап: " + description);
         }
         catch (InterruptedException e)
         {

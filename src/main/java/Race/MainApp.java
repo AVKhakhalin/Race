@@ -31,8 +31,8 @@ public class MainApp
     public static final float DIST_BETWEEN_CAR = 7;
 
     public static long frameLength = 1000000000 / FPS;
-    public static long ns;
-    public static long delta = 0;
+//    public static long ns;
+//    public static long delta = 0;
 
     public static Image redCar;
     public static Image blueCar;
@@ -184,7 +184,27 @@ public class MainApp
         {
             e.printStackTrace();
         }
-        System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА МАШИНА " + cars[0].getWinnerName());
+
+        if (cars[0].getWinnerName().indexOf("1") > 0)
+        {
+            System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА КРАСНАЯ МАШИНА " + cars[0].getWinnerName());
+            JOptionPane.showMessageDialog(new JFrame(), "<html><font face=\"MyFont, Verdana, Arial\", size=\"4\">ПОБЕДИЛА КРАСНАЯ МАШИНА С НАЗВАНИЕМ \"" + cars[0].getWinnerName() + "\"!</html>", "ИНФОРМАЦИЯ", JOptionPane.INFORMATION_MESSAGE);
+        }
+        else if (cars[0].getWinnerName().indexOf("2") > 0)
+        {
+            System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА СИНЯЯ МАШИНА " + cars[0].getWinnerName());
+            JOptionPane.showMessageDialog(new JFrame(), "<html><font face=\"MyFont, Verdana, Arial\", size=\"4\">ПОБЕДИЛА СИНЯЯ МАШИНА С НАЗВАНИЕМ \"" + cars[0].getWinnerName() + "\"!</html>", "ИНФОРМАЦИЯ", JOptionPane.INFORMATION_MESSAGE);
+        }
+        else if (cars[0].getWinnerName().indexOf("3") > 0)
+        {
+            System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА ЗЕЛЁНАЯ МАШИНА " + cars[0].getWinnerName());
+            JOptionPane.showMessageDialog(new JFrame(), "<html><font face=\"MyFont, Verdana, Arial\", size=\"4\">ПОБЕДИЛА ЗЕЛЁНАЯ МАШИНА С НАЗВАНИЕМ \"" + cars[0].getWinnerName() + "\"!</html>", "ИНФОРМАЦИЯ", JOptionPane.INFORMATION_MESSAGE);
+        }
+        else
+        {
+            System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА ЖЁЛТАЯ МАШИНА " + cars[0].getWinnerName());
+            JOptionPane.showMessageDialog(new JFrame(), "<html><font face=\"MyFont, Verdana, Arial\", size=\"4\">ПОБЕДИЛА ЖЁЛТАЯ МАШИНА С НАЗВАНИЕМ \"" + cars[0].getWinnerName() + "\"!</html>", "ИНФОРМАЦИЯ", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     //region Создание панели с объектами
