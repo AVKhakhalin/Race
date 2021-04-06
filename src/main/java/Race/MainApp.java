@@ -14,6 +14,10 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.io.File;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
@@ -22,15 +26,20 @@ public class MainApp
 {
     public static final int SIZE_WIDTH = 916;  // 18 пикселей занимают бордюры в сумме слева и справа
     public static final int SIZE_HEIGHT = 555; // 45 пикселей занимают бордюры в сумме сниз у и сверху
+    public static final int FPS = 25; // Количество кадров в секунду
+    public static final float KOEF_SCALE = 0.87f;
+    public static final float DIST_BETWEEN_CAR = 7;
 
-    public static Image background;
+    public static long frameLength = 1000000000 / FPS;
+    public static long ns;
+    public static long delta = 0;
+
     public static Image redCar;
     public static Image blueCar;
     public static Image greenCar;
     public static Image yellowCar;
-    public static long lastTime;
-    public static long curTime;
-    public static float deltaTime;
+    public static Image background;
+    public static Image tunnels;
     public static long counter_Red = 1;
     public static long counter_Blue = 1;
     public static long counter_Green = 1;
@@ -38,7 +47,6 @@ public class MainApp
 
     public static JFrame frame;
 
-    public static final float KOEF_SCALE = 0.87f;
     public static float[][] coordDates_Red;
     public static float[][] coordDates_Blue;
     public static float[][] coordDates_Yellow;
@@ -54,7 +62,12 @@ public class MainApp
     public static float angle_Yellow = 0f;
     public static float angle_Green = 0f;
 
+    public static float temp_x;
+    public static float temp_y;
+
     public static final int CARS_COUNT = 4;
+    public static Car[] cars;
+    public static Race race;
 
     public static void main(String[] args)
     {
@@ -62,25 +75,49 @@ public class MainApp
         String fileName = "/resArrayCoord_Red.txt";
         coordDates_Red = new float[(int) determNumberFileDates(fileName)][2];
         readDatesFromFile(fileName, coordDates_Red, KOEF_SCALE);
-        fileName = "/resArrayCoord_Blue.txt";
-        coordDates_Blue = new float[(int) determNumberFileDates(fileName)][2];
-        readDatesFromFile(fileName, coordDates_Blue, KOEF_SCALE);
-        fileName = "/resArrayCoord_Yellow.txt";
-        coordDates_Yellow = new float[(int) determNumberFileDates(fileName)][2];
-        readDatesFromFile(fileName, coordDates_Yellow, KOEF_SCALE);
-        fileName = "/resArrayCoord_Green.txt";
-        coordDates_Green = new float[(int) determNumberFileDates(fileName)][2];
-        readDatesFromFile(fileName, coordDates_Green, KOEF_SCALE);
+        coordDates_Blue = new float[coordDates_Red.length][2];
+        coordDates_Yellow = new float[coordDates_Red.length][2];
+        coordDates_Green = new float[coordDates_Red.length][2];
+        for (int i = 1; i < coordDates_Red.length; i++)
+        {
+            temp_x = coordDates_Red[i][1] - coordDates_Red[i - 1][1];
+            temp_y = - (coordDates_Red[i][0] - coordDates_Red[i - 1][0]);
+            temp_x = (float) (temp_x / Math.sqrt(temp_x * temp_x + temp_y * temp_y));
+            temp_y = (float) (temp_y / Math.sqrt(temp_x * temp_x + temp_y * temp_y));
+            coordDates_Blue[i][0] = coordDates_Red[i][0] + temp_x * DIST_BETWEEN_CAR;
+            coordDates_Blue[i][1] = coordDates_Red[i][1] + temp_y * DIST_BETWEEN_CAR;
+            if (i == 1)
+            {
+                coordDates_Blue[0][0] = coordDates_Red[0][0] + temp_x * DIST_BETWEEN_CAR;
+                coordDates_Blue[0][1] = coordDates_Red[0][1] + temp_y * DIST_BETWEEN_CAR;
+            }
+
+            coordDates_Yellow[i][0] = coordDates_Red[i][0] + temp_x * 2 * DIST_BETWEEN_CAR;
+            coordDates_Yellow[i][1] = coordDates_Red[i][1] + temp_y * 2 * DIST_BETWEEN_CAR;
+            if (i == 1)
+            {
+                coordDates_Yellow[0][0] = coordDates_Red[0][0] + temp_x * 2 * DIST_BETWEEN_CAR;
+                coordDates_Yellow[0][1] = coordDates_Red[0][1] + temp_y * 2 * DIST_BETWEEN_CAR;
+            }
+
+            coordDates_Green[i][0] = coordDates_Red[i][0] + temp_x * 3 * DIST_BETWEEN_CAR;
+            coordDates_Green[i][1] = coordDates_Red[i][1] + temp_y * 3 * DIST_BETWEEN_CAR;
+            if (i == 1)
+            {
+                coordDates_Green[0][0] = coordDates_Red[0][0] + temp_x * 3 * DIST_BETWEEN_CAR;
+                coordDates_Green[0][1] = coordDates_Red[0][1] + temp_y * 3 * DIST_BETWEEN_CAR;
+            }
+        }
 
         // Установка дельт
-        deltaCoordDates_Red[0] = coordDates_Red[0][0] - 816 + 3;
-        deltaCoordDates_Red[1] = coordDates_Red[0][1] - 145 + 10;
-        deltaCoordDates_Blue[0] = coordDates_Blue[0][0] - 823;
-        deltaCoordDates_Blue[1] = coordDates_Blue[0][1] - 148;
-        deltaCoordDates_Yellow[0] = coordDates_Yellow[0][0] - 828;
-        deltaCoordDates_Yellow[1] = coordDates_Yellow[0][1] - 151;
-        deltaCoordDates_Green[0] = coordDates_Green[0][0] - 834;
-        deltaCoordDates_Green[1] = coordDates_Green[0][1] - 154;
+//        deltaCoordDates_Red[0] = coordDates_Red[0][0] - 816 + 3;
+//        deltaCoordDates_Red[1] = coordDates_Red[0][1] - 145 + 10;
+//        deltaCoordDates_Blue[0] = coordDates_Blue[0][0] - 823;
+//        deltaCoordDates_Blue[1] = coordDates_Blue[0][1] - 148;
+//        deltaCoordDates_Yellow[0] = coordDates_Yellow[0][0] - 828;
+//        deltaCoordDates_Yellow[1] = coordDates_Yellow[0][1] - 151;
+//        deltaCoordDates_Green[0] = coordDates_Green[0][0] - 834;
+//        deltaCoordDates_Green[1] = coordDates_Green[0][1] - 154;
         //endregion
 
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -107,6 +144,7 @@ public class MainApp
             greenCar = ImageIO.read(MainApp.class.getResource("/car_green.png"));
             yellowCar = ImageIO.read(MainApp.class.getResource("/car_yellow.png"));
             background = ImageIO.read(MainApp.class.getResource("/Background.jpg"));
+            tunnels = ImageIO.read(MainApp.class.getResource("/Tunnels.png"));
         }
         catch(Exception e)
         {
@@ -118,19 +156,35 @@ public class MainApp
         frame.setVisible(true);
 
         // Блок гонок
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(4);
+        Semaphore semaphoreTonnele1 = new Semaphore(2);
+        Semaphore semaphoreTonnele2 = new Semaphore(2);
+        CyclicBarrier finishBarrier = new CyclicBarrier(2);
+
         System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Подготовка!!!");
-        Race race = new Race(new Road(60), new Tunnel(), new Road(40));
-        Car[] cars = new Car[CARS_COUNT];
+//        race = new Race(new Road(60), new Tunnel(semaphoreTonnele), new Road(40));
+        race = new Race(new Road(620), new Tunnel(540, semaphoreTonnele1), new Road(3470), new Tunnel(550, semaphoreTonnele2), new Road(668));
+        cars = new Car[CARS_COUNT];
         for (int i = 0; i < cars.length; i++)
         {
-            cars[i] = new Car(race, 20 + (int) (Math.random() * 10));
+            cars[i] = new Car(race, 20 + (int) (Math.random() * 10), cyclicBarrier, finishBarrier, frameLength);
         }
+
         for (int i = 0; i < cars.length; i++)
         {
             new Thread(cars[i]).start();
         }
         System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка началась!!!");
-        System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!!");
+
+        try
+        {
+            finishBarrier.await();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!! " + " ПОБЕДИЛА МАШИНА " + cars[0].getWinnerName());
     }
 
     //region Создание панели с объектами
@@ -150,19 +204,45 @@ public class MainApp
             repaint();
         }
     };
+
     public static void onRepaint(Graphics g)
     {
-        curTime = System.nanoTime();
-        deltaTime = (curTime - lastTime) * 0.000000001f;
-        lastTime = curTime;
-//        System.out.println(deltaTime);
-        if (deltaTime > 0.0006)
+        // Замедление движения машин
+/*        delta++;
+        if (delta % (cars[0].getSpeed() - 19) == 0)
         {
             counter_Red++;
+        }
+        if (delta % (cars[1].getSpeed() - 19) == 0)
+        {
             counter_Blue++;
+        }
+        if (delta % (cars[2].getSpeed() - 19) == 0)
+        {
             counter_Green++;
+        }
+        if (delta % (cars[3].getSpeed() - 19) == 0)
+        {
             counter_Yellow++;
         }
+
+        // Установка равномерного движения объектов на сцене
+        ns = System.nanoTime();
+        try
+        {
+            ns += frameLength;
+            Thread.sleep(Math.max(0, (ns - System.nanoTime()) / 10000000));
+        }
+        catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
+*/
+        counter_Red = cars[0].getCounterDistantPoints();
+        counter_Blue = cars[1].getCounterDistantPoints();
+        counter_Green = cars[2].getCounterDistantPoints();
+        counter_Yellow = cars[3].getCounterDistantPoints();
+
         if (counter_Red >= coordDates_Red.length)
         {
             counter_Red = 1;
@@ -185,9 +265,12 @@ public class MainApp
 
         // Расчёт углов
         angle_Red = (float) Math.atan2(coordDates_Red[(int) counter_Red][1] - coordDates_Red[(int) counter_Red - 1][1], coordDates_Red[(int) counter_Red][0] - coordDates_Red[(int) counter_Red - 1][0]);
-        angle_Blue = (float) Math.atan2(coordDates_Blue[(int) counter_Blue][1] - coordDates_Blue[(int) counter_Blue - 1][1], coordDates_Blue[(int) counter_Blue][0] - coordDates_Blue[(int) counter_Blue - 1][0]);
-        angle_Green = (float) Math.atan2(coordDates_Green[(int) counter_Green][1] - coordDates_Green[(int) counter_Green - 1][1], coordDates_Green[(int) counter_Green][0] - coordDates_Green[(int) counter_Green - 1][0]);
-        angle_Yellow = (float) Math.atan2(coordDates_Yellow[(int) counter_Yellow][1] - coordDates_Yellow[(int) counter_Yellow - 1][1], coordDates_Yellow[(int) counter_Yellow][0] - coordDates_Yellow[(int) counter_Yellow - 1][0]);
+        angle_Blue = (float) Math.atan2(coordDates_Red[(int) counter_Blue][1] - coordDates_Red[(int) counter_Blue - 1][1], coordDates_Red[(int) counter_Blue][0] - coordDates_Red[(int) counter_Blue - 1][0]);
+        angle_Green = (float) Math.atan2(coordDates_Red[(int) counter_Green][1] - coordDates_Red[(int) counter_Green - 1][1], coordDates_Red[(int) counter_Green][0] - coordDates_Red[(int) counter_Green - 1][0]);
+        angle_Yellow = (float) Math.atan2(coordDates_Red[(int) counter_Yellow][1] - coordDates_Red[(int) counter_Yellow - 1][1], coordDates_Red[(int) counter_Yellow][0] - coordDates_Red[(int) counter_Yellow - 1][0]);
+//        angle_Blue = (float) Math.atan2(coordDates_Blue[(int) counter_Blue][1] - coordDates_Blue[(int) counter_Blue - 1][1], coordDates_Blue[(int) counter_Blue][0] - coordDates_Blue[(int) counter_Blue - 1][0]);
+//        angle_Green = (float) Math.atan2(coordDates_Green[(int) counter_Green][1] - coordDates_Green[(int) counter_Green - 1][1], coordDates_Green[(int) counter_Green][0] - coordDates_Green[(int) counter_Green - 1][0]);
+//        angle_Yellow = (float) Math.atan2(coordDates_Yellow[(int) counter_Yellow][1] - coordDates_Yellow[(int) counter_Yellow - 1][1], coordDates_Yellow[(int) counter_Yellow][0] - coordDates_Yellow[(int) counter_Yellow - 1][0]);
 
         // Прорисовка машин
         Graphics2D g2 = (Graphics2D) g;
@@ -220,6 +303,9 @@ public class MainApp
         g2.setTransform(newXform);
         g2.drawImage(greenCar, (int) (coordDates_Green[(int) counter_Green][0] - deltaCoordDates_Green[0]), (int) (coordDates_Green[(int) counter_Green][1] - deltaCoordDates_Green[1]), null);
         g2.setTransform(origXform);
+
+        // Отображение туннелей
+        g.drawImage(tunnels,0,0,null);
     }
     //endregion
 
@@ -239,8 +325,8 @@ public class MainApp
                 line = reader.readLine();
                 if ((line != null) && (numberDates < toArray.length))
                 {
-                    toArray[(int) numberDates][0] = getFloat(line) / koefScale;
-                    toArray[(int) numberDates][1] = getFloat(line.substring(line.indexOf(" ", 0) + 1, line.length())) / koefScale;
+                    toArray[(int) numberDates][0] = -35 + getFloat(line) / koefScale;
+                    toArray[(int) numberDates][1] = -37 + getFloat(line.substring(line.indexOf(" ", 0) + 1, line.length())) / koefScale;
                     numberDates++;
                 }
             }
